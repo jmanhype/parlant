@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import annotations
+import hashlib
 from typing import Any, Mapping, NewType, Optional, Sequence, TypeAlias, Union
 import nanoid  # type: ignore
 from pydantic import BaseModel, ConfigDict
@@ -106,3 +107,10 @@ def generate_id() -> UniqueId:
         new_id = nanoid.generate(size=10)
         if "-" not in (new_id[0], new_id[-1]) and "_" not in new_id:
             return UniqueId(new_id)
+
+
+def md5_checksum(input: str) -> str:
+    md5_hash = hashlib.md5()
+    md5_hash.update(input.encode("utf-8"))
+
+    return md5_hash.hexdigest()

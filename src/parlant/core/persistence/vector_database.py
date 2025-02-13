@@ -16,6 +16,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Awaitable, Callable, Generic, Optional, Sequence, TypeVar, TypedDict
+from typing_extensions import Required
 
 from parlant.core.common import JSONSerializable, Version
 from parlant.core.nlp.embedding import Embedder
@@ -23,9 +24,10 @@ from parlant.core.persistence.common import ObjectId, Where
 
 
 class BaseDocument(TypedDict, total=False):
-    id: ObjectId
-    version: Version.String
-    content: str
+    id: Required[ObjectId]
+    version: Required[Version.String]
+    content: Required[str]
+    checksum: Required[str]
 
 
 TDocument = TypeVar("TDocument", bound=BaseDocument)
@@ -82,6 +84,7 @@ class VectorDatabase(ABC):
     async def get_collection(
         self,
         name: str,
+        schema: type[TDocument],
         embedder_type: type[Embedder],
         document_loader: Callable[[BaseDocument], Awaitable[Optional[TDocument]]],
     ) -> VectorCollection[TDocument]: ...

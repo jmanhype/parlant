@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import asyncio
-import hashlib
 from typing import Any, Iterable, Optional, OrderedDict, Sequence, cast
 
 from parlant.core import async_utils
 from parlant.core.agents import Agent, AgentStore
 from parlant.core.background_tasks import BackgroundTaskService
+from parlant.core.common import md5_checksum
 from parlant.core.evaluations import (
     CoherenceCheck,
     ConnectionProposition,
@@ -51,13 +51,6 @@ class EvaluationError(Exception):
 class EvaluationValidationError(Exception):
     def __init__(self, message: str) -> None:
         super().__init__(message)
-
-
-def md5_checksum(input: str) -> str:
-    md5_hash = hashlib.md5()
-    md5_hash.update(input.encode("utf-8"))
-
-    return md5_hash.hexdigest()
 
 
 class GuidelineEvaluator:

@@ -17,11 +17,11 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from itertools import chain
 from typing import NewType, Optional, Sequence, TypedDict, cast
-from typing_extensions import override, Self
+from typing_extensions import override, Self, Required
 
 from parlant.core import async_utils
 from parlant.core.async_utils import ReaderWriterLock
-from parlant.core.common import ItemNotFoundError, Version, generate_id, UniqueId
+from parlant.core.common import ItemNotFoundError, Version, generate_id, UniqueId, md5_checksum
 from parlant.core.persistence.common import ObjectId
 from parlant.core.nlp.embedding import Embedder, EmbedderFactory
 from parlant.core.persistence.vector_database import BaseDocument, VectorCollection, VectorDatabase
@@ -103,14 +103,15 @@ class GlossaryStore:
 
 
 class _TermDocument(TypedDict, total=False):
-    id: ObjectId
-    version: Version.String
+    id: Required[ObjectId]
+    version: Required[Version.String]
+    content: Required[str]
+    checksum: Required[str]
     term_set: str
     creation_utc: str
     name: str
     description: str
     synonyms: Optional[str]
-    content: str
 
 
 class GlossaryVectorStore(GlossaryStore):
@@ -161,16 +162,17 @@ class GlossaryVectorStore(GlossaryStore):
     ) -> None:
         pass
 
-    def _serialize(self, term: Term, term_set: str, content: str) -> _TermDocument:
+    def _serialize(self, term: Term, term_set: str, content: str, checksum: str) -> _TermDocument:
         return _TermDocument(
             id=ObjectId(term.id),
             version=self.VERSION.to_string(),
+            content=content,
+            checksum=checksum,
             term_set=term_set,
             creation_utc=term.creation_utc.isoformat(),
             name=term.name,
             description=term.description,
             synonyms=(", ").join(term.synonyms) if term.synonyms is not None else "",
-            content=content,
         )
 
     def _deserialize(self, term_document: _TermDocument) -> Term:
@@ -208,7 +210,14 @@ class GlossaryVectorStore(GlossaryStore):
                 synonyms=list(synonyms) if synonyms else [],
             )
 
-            await self._collection.insert_one(document=self._serialize(term, term_set, content))
+            await self._collection.insert_one(
+                document=self._serialize(
+                    term=term,
+                    term_set=term_set,
+                    content=content,
+                    checksum=md5_checksum(content),
+                )
+            )
 
         return term
 
@@ -244,10 +253,13 @@ class GlossaryVectorStore(GlossaryStore):
             update_result = await self._collection.update_one(
                 filters={"$and": [{"term_set": {"$eq": term_set}}, {"id": {"$eq": term_id}}]},
                 params={
+                    "id": document_to_update["id"],
+                    "version": document_to_update["version"],
                     "content": content,
                     "name": name,
                     "description": description,
                     "synonyms": ", ".join(synonyms) if synonyms else "",
+                    "checksum": md5_checksum(content),
                 },
             )
 

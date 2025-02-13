@@ -89,6 +89,7 @@ class TransientVectorDatabase(VectorDatabase):
     async def get_collection(
         self,
         name: str,
+        schema: type[TDocument],
         embedder_type: type[Embedder],
         document_loader: Callable[[BaseDocument], Awaitable[Optional[TDocument]]],
     ) -> TransientVectorCollection[TDocument]:
