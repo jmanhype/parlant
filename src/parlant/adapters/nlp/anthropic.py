@@ -102,12 +102,29 @@ class AnthropicAISchematicGenerator(SchematicGenerator[T]):
         anthropic_api_arguments = {k: v for k, v in hints.items() if k in self.supported_hints}
 
         t_start = time.time()
-        response = await self._client.messages.create(
-            messages=[{"role": "user", "content": prompt}],
-            model=self.model_name,
-            max_tokens=4096,
-            **anthropic_api_arguments,
-        )
+        try:
+            response = await self._client.messages.create(
+                messages=[{"role": "user", "content": prompt}],
+                model=self.model_name,
+                max_tokens=4096,
+                **anthropic_api_arguments,
+            )
+        except RateLimitError as e:
+            raise RateLimitError(
+                (
+                    "Anthropic API rate limit exceeded. Possible reasons:\n"
+                    "1. Your account may have insufficient API credits.\n"
+                    "2. You may be using a free-tier account with limited request capacity.\n"
+                    "3. You might have exceeded the requests-per-minute limit for your account.\n\n"
+                    "Recommended actions:\n"
+                    "- Check your Anthropic account balance and billing status.\n"
+                    "- Review your API usage limits in Anthropic's dashboard.\n"
+                    "- For more details on rate limits and usage tiers, visit:\n"
+                    "  https://docs.anthropic.com/claude/reference/rate-limits \n"
+                ),
+                response=e.response,
+                body=e.body,
+            )
         t_end = time.time()
 
         raw_content = response.content[0].text
