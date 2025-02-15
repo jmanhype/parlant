@@ -61,7 +61,7 @@ Parlant is the right tool for the job if you're building an LLM-based chat agent
 1. 📈 You're expected to maintain a **growing set of behavioral guidelines**, and you need to maintain them coherently and with version-tracking
 1. 💬 Conversational UX and user-engagmeent is an important concern for your use case, and you want to easily **control the flow and tone of conversations**
 
-## ⭐ Help Us Pick Up Pace!
+## ⭐ Star Us: Your Support Goes a Long Way!
 [![Star History Chart](https://api.star-history.com/svg?repos=emcie-co/parlant&type=Date)](https://star-history.com/#emcie-co/parlant&Date)
 
 ## 🤔 What Makes Parlant Different?
