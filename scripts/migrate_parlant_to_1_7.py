@@ -13,9 +13,8 @@
 # limitations under the License.
 
 import asyncio
-from contextlib import asynccontextmanager, AsyncExitStack
+from contextlib import AsyncExitStack
 import importlib
-import logging
 import os
 from typing import cast
 import chromadb
@@ -28,27 +27,36 @@ from parlant.adapters.db.json_file import JSONFileDocumentDatabase
 from parlant.adapters.vector_db.chroma import ChromaDatabase
 from parlant.bin.server import StartupError
 from parlant.core.common import generate_id, md5_checksum
+from parlant.core.contextual_correlator import ContextualCorrelator
+from parlant.core.logging import LogLevel, StdoutLogger
 from parlant.core.nlp.embedding import EmbedderFactory
 from parlant.core.persistence.common import ObjectId
 from parlant.core.persistence.document_database import DocumentDatabase, identity_loader
 from parlant.core.persistence.document_database_helper import _MetadataDocument
 from parlant.core.persistence.vector_database import BaseDocument
 
-DEFAULT_HOME_DIR = "runtime-data" if Path("runtime-data").exists() else "parlant-data"
+PARENT_DIR = Path(__file__).parent.parent
+DEFAULT_HOME_DIR = (
+    (PARENT_DIR / "runtime-data").as_posix()
+    if (PARENT_DIR / "runtime-data").exists()
+    else (PARENT_DIR / "parlant-data").as_posix()
+)
 PARLANT_HOME_DIR = Path(os.environ.get("PARLANT_HOME", DEFAULT_HOME_DIR))
 PARLANT_HOME_DIR.mkdir(parents=True, exist_ok=True)
 
-EXIT_STACK: AsyncExitStack
+EXIT_STACK = AsyncExitStack()
 
 sys.path.append(PARLANT_HOME_DIR.as_posix())
 sys.path.append(".")
 
-LOGGER = logging.getLogger(__name__)
+LOGGER = StdoutLogger(
+    correlator=ContextualCorrelator(),
+    log_level=LogLevel.INFO,
+)
 
 
-@asynccontextmanager
 async def migrate() -> None:
-    EXIT_STACK = AsyncExitStack()
+    LOGGER.info("Starting migration process...")
 
     agents_db = await EXIT_STACK.enter_async_context(
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "agents.json")
@@ -58,7 +66,7 @@ async def migrate() -> None:
     context_variables_db = await EXIT_STACK.enter_async_context(
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "context_variables.json")
     )
-    await migrate_document_database(context_variables_db, "context_variables")
+    await migrate_document_database(context_variables_db, "variables")
 
     tags_db = await EXIT_STACK.enter_async_context(
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "tags.json")
@@ -78,7 +86,7 @@ async def migrate() -> None:
     guideline_tool_associations_db = await EXIT_STACK.enter_async_context(
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "guideline_tool_associations.json")
     )
-    await migrate_document_database(guideline_tool_associations_db, "guideline_tool_associations")
+    await migrate_document_database(guideline_tool_associations_db, "associations")
 
     guidelines_db = await EXIT_STACK.enter_async_context(
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "guidelines.json")
@@ -98,42 +106,74 @@ async def migrate() -> None:
     services_db = await EXIT_STACK.enter_async_context(
         JSONFileDocumentDatabase(LOGGER, PARLANT_HOME_DIR / "services.json")
     )
-    await migrate_document_database(services_db, "services")
+    await migrate_document_database(services_db, "tool_services")
 
     await migrate_glossary()
+    LOGGER.info("Migration completed successfully")
 
 
 async def migrate_document_database(db: DocumentDatabase, collection_name: str) -> None:
+    LOGGER.info(f"Migrating {collection_name} database...")
     try:
-        collection = db.get_collection(collection_name)
+        collection = await db.get_collection(
+            collection_name,
+            BaseDocument,
+            identity_loader,
+        )
+
     except ValueError:
+        LOGGER.info(f"Collection {collection_name} not found, skipping...")
         return
 
-    metadata_collection = db.get_or_create_collection(
+    try:
+        metadata_collection = await db.get_collection(
+            "metadata",
+            BaseDocument,
+            identity_loader,
+        )
+        await db.delete_collection("metadata")
+
+    except ValueError:
+        pass
+
+    metadata_collection = await db.get_or_create_collection(
         "metadata",
         _MetadataDocument,
         identity_loader,
     )
 
-    if document := collection.find_one({}):
+    if document := await collection.find_one({}):
         await metadata_collection.insert_one(
             {
                 "id": ObjectId(generate_id()),
                 "version": document["version"],
             }
         )
+        LOGGER.info(f"Successfully migrated {collection_name} database")
+    else:
+        LOGGER.info(f"No documents found in {collection_name} collection.")
 
 
-async def migrate_glossary(nlp_service_name: str) -> None:
+async def migrate_glossary() -> None:
+    LOGGER.info("Starting glossary migration...")
     try:
         embedder_factory = EmbedderFactory(Container())
 
-        db = ChromaDatabase(LOGGER, PARLANT_HOME_DIR, embedder_factory)
+        db = await EXIT_STACK.enter_async_context(
+            ChromaDatabase(LOGGER, PARLANT_HOME_DIR, embedder_factory)
+        )
 
-        old_collection = db.chroma_client.get_collection("glossary")
+        try:
+            old_collection = db.chroma_client.get_collection("glossary")
+        except chromadb.errors.InvalidCollectionException:
+            LOGGER.info("Glossary collection not found, skipping...")
+            return
 
-        if document := old_collection.find_one({}):
+        if docs := old_collection.peek(limit=1)["metadatas"]:
+            document = docs[0]
+
             version = document["version"]
+
             embedder_module = importlib.import_module(
                 old_collection.metadata["embedder_module_path"]
             )
@@ -142,16 +182,26 @@ async def migrate_glossary(nlp_service_name: str) -> None:
                 old_collection.metadata["embedder_type_path"],
             )
 
-            all_items = old_collection.get(include=["documents", "embeddings", "metadatas", "ids"])
+            all_items = old_collection.get(include=["documents", "embeddings", "metadatas"])
+            LOGGER.info(f"Found {len(all_items['ids'])} items to migrate")
 
-            _ = db.create_collection(
-                "glossary",
-                BaseDocument,
-                embedder_type,
-            )
+            chroma_unembedded_collection = next(
+                (
+                    collection
+                    for collection in db.chroma_client.list_collections()
+                    if collection.name == "glossary_unembedded"
+                ),
+                None,
+            ) or db.chroma_client.create_collection(name="glossary_unembedded")
 
-            chroma_unembedded_collection = db.chroma_client.get(name="glossary_unembedded")
-            chroma_new_collection = db.chroma_client.get(
+            chroma_new_collection = next(
+                (
+                    collection
+                    for collection in db.chroma_client.list_collections()
+                    if collection.name == db.format_collection_name("glossary", embedder_type)
+                ),
+                None,
+            ) or db.chroma_client.create_collection(
                 name=db.format_collection_name("glossary", embedder_type)
             )
 
@@ -163,33 +213,40 @@ async def migrate_glossary(nlp_service_name: str) -> None:
 
                 chroma_unembedded_collection.add(
                     ids=[all_items["ids"][i]],
-                    embeddings=[0],
+                    documents=[new_doc["content"]],
                     metadatas=[cast(chromadb.types.Metadata, new_doc)],
-                    documents=[new_doc],
+                    embeddings=[0],
                 )
 
                 chroma_new_collection.add(
                     ids=[all_items["ids"][i]],
-                    embeddings=all_items["embeddings"][i],
+                    documents=[new_doc["content"]],
                     metadatas=[cast(chromadb.types.Metadata, new_doc)],
-                    documents=[new_doc],
+                    embeddings=all_items["embeddings"][i],
                 )
 
-            chroma_unembedded_collection.modify(metadata={"version": i})
-            chroma_new_collection.modify(metadata={"version": i})
+            # Version starts at 1
+            chroma_unembedded_collection.modify(
+                metadata={"version": 1 + len(all_items["metadatas"])}
+            )
+            chroma_new_collection.modify(metadata={"version": 1 + len(all_items["metadatas"])})
 
             db.upsert_metadata(
                 "version",
                 version,
             )
+            LOGGER.info("Successfully migrated glossary data")
 
         db.chroma_client.delete_collection(old_collection.name)
+        LOGGER.info("Cleaned up old glossary collection")
 
     except Exception as e:
+        LOGGER.error(f"Failed to migrate glossary: {e}")
         die(f"Error migrating glossary: {e}")
 
 
 def die(message: str) -> NoReturn:
+    LOGGER.critical(message)
     print(message, file=sys.stderr)
     sys.exit(1)
 
