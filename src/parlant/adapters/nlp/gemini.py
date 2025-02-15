@@ -98,10 +98,25 @@ class GeminiSchematicGenerator(SchematicGenerator[T]):
         gemini_api_arguments = {k: v for k, v in hints.items() if k in self.supported_hints}
 
         t_start = time.time()
-        response = await self._model.generate_content_async(
-            contents=prompt,
-            generation_config=gemini_api_arguments,  # type: ignore
-        )
+        try:
+            response = await self._model.generate_content_async(
+                contents=prompt,
+                generation_config=gemini_api_arguments,  # type: ignore
+            )
+        except TooManyRequests as e:
+            raise TooManyRequests(  # type: ignore
+                message=(
+                    "Google API rate limit exceeded. Possible reasons:\n"
+                    "1. Your account may have insufficient API credits.\n"
+                    "2. You may be using a free-tier account with limited request capacity.\n"
+                    "3. You might have exceeded the requests-per-minute limit for your account.\n\n"
+                    "Recommended actions:\n"
+                    "- Check your Google API account balance and billing status.\n"
+                    "- Review your API usage limits in Google's dashboard.\n"
+                    "- For more details on rate limits and usage tiers, visit:\n"
+                    "  https://cloud.google.com/docs/quota-and-billing/quotas/quotas-overview"
+                ),
+            ) from e
         t_end = time.time()
 
         raw_content = response.text
