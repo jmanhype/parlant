@@ -160,5 +160,6 @@ class JinaAIEmbedder(HuggingFaceEmbedder):
         super().__init__("jinaai/jina-embeddings-v2-base-en")
 
     @property
+    @override
     def dimensions(self) -> int:
         return 768
