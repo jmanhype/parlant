@@ -655,7 +655,7 @@ def main() -> None:
     )
     @click.option(
         "--migrate",
-        is_flag=True,
+        is_flag=False,
         help=(
             "Enable to migrate the database schema to the latest version. "
             "Disable to exit if the database schema is not up-to-date."
