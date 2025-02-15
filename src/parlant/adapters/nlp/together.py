@@ -47,6 +47,18 @@ from parlant.core.nlp.policies import policy, retry
 from parlant.core.nlp.service import NLPService
 from parlant.core.nlp.tokenization import EstimatingTokenizer
 
+RATE_LIMIT_ERROR_MESSAGE = (
+    "Together API rate limit exceeded. Possible reasons:\n"
+    "1. Your account may have insufficient API credits.\n"
+    "2. You may be using a free-tier account with limited request capacity.\n"
+    "3. You might have exceeded the requests-per-minute limit for your account.\n\n"
+    "Recommended actions:\n"
+    "- Check your Together account balance and billing status.\n"
+    "- Review your API usage limits in Together's dashboard.\n"
+    "- For more details on rate limits and usage tiers, visit:\n"
+    "  https://docs.together.ai/docs/rate-limits"
+)
+
 
 class LlamaEstimatingTokenizer(EstimatingTokenizer):
     def __init__(self) -> None:
@@ -100,17 +112,8 @@ class TogetherAISchematicGenerator(SchematicGenerator[T]):
                 **together_api_arguments,
             )
         except RateLimitError as e:
-            raise RateLimitError(
-                "Together API rate limit exceeded. Possible reasons:\n"
-                "1. Your account may have insufficient API credits.\n"
-                "2. You may be using a free-tier account with limited request capacity.\n"
-                "3. You might have exceeded the requests-per-minute limit for your account.\n\n"
-                "Recommended actions:\n"
-                "- Check your Together account balance and billing status.\n"
-                "- Review your API usage limits in Together's dashboard.\n"
-                "- For more details on rate limits and usage tiers, visit:\n"
-                "  https://docs.together.ai/docs/rate-limits"
-            ) from e
+            raise RateLimitError(RATE_LIMIT_ERROR_MESSAGE) from e
+
         t_end = time.time()
 
         raw_content = response.choices[0].message.content or "{}"
@@ -247,10 +250,13 @@ class TogetherAIEmbedder(Embedder):
     ) -> EmbeddingResult:
         _ = hints
 
-        response = await self._client.embeddings.create(
-            model=self.model_name,
-            input=texts,
-        )
+        try:
+            response = await self._client.embeddings.create(
+                model=self.model_name,
+                input=texts,
+            )
+        except RateLimitError as e:
+            raise RateLimitError(RATE_LIMIT_ERROR_MESSAGE) from e
 
         vectors = [data_point.embedding for data_point in response.data]
         return EmbeddingResult(vectors=vectors)
