@@ -63,8 +63,12 @@ class ChromaDatabase(VectorDatabase):
     ) -> None:
         pass
 
-    def format_collection_name(self, name: str, embedder_type: type[Embedder]) -> str:
-        return f"{name}_{embedder_type}"
+    def format_collection_name(
+        self,
+        name: str,
+        embedder_type: type[Embedder],
+    ) -> str:
+        return f"{name}_{embedder_type.__name__}"
 
     async def _load_collection_documents(
         self,
