@@ -50,6 +50,19 @@ from parlant.core.nlp.generation import (
 from parlant.core.nlp.moderation import ModerationCheck, ModerationService, ModerationTag
 
 
+RATE_LIMIT_ERROR_MESSAGE = (
+    "OpenAI API rate limit exceeded. Possible reasons:\n"
+    "1. Your account may have insufficient API credits.\n"
+    "2. You may be using a free-tier account with limited request capacity.\n"
+    "3. You might have exceeded the requests-per-minute limit for your account.\n\n"
+    "Recommended actions:\n"
+    "- Check your OpenAI account balance and billing status.\n"
+    "- Review your API usage limits in OpenAI's dashboard.\n"
+    "- For more details on rate limits and usage tiers, visit:\n"
+    "  https://platform.openai.com/docs/guides/rate-limits/usage-tiers\n"
+)
+
+
 class OpenAIEstimatingTokenizer(EstimatingTokenizer):
     def __init__(self, model_name: str) -> None:
         self.model_name = model_name
@@ -119,12 +132,15 @@ class OpenAISchematicGenerator(SchematicGenerator[T]):
 
         if hints.get("strict", False):
             t_start = time.time()
-            response = await self._client.beta.chat.completions.parse(
-                messages=[{"role": "developer", "content": prompt}],
-                model=self.model_name,
-                response_format=self.schema,
-                **openai_api_arguments,
-            )
+            try:
+                response = await self._client.beta.chat.completions.parse(
+                    messages=[{"role": "developer", "content": prompt}],
+                    model=self.model_name,
+                    response_format=self.schema,
+                    **openai_api_arguments,
+                )
+            except RateLimitError as e:
+                raise RateLimitError(RATE_LIMIT_ERROR_MESSAGE, response=e.response, body=e.body)
             t_end = time.time()
 
             if response.usage:
@@ -154,14 +170,17 @@ class OpenAISchematicGenerator(SchematicGenerator[T]):
             )
 
         else:
-            t_start = time.time()
-            response = await self._client.chat.completions.create(
-                messages=[{"role": "developer", "content": prompt}],
-                model=self.model_name,
-                response_format={"type": "json_object"},
-                **openai_api_arguments,
-            )
-            t_end = time.time()
+            try:
+                t_start = time.time()
+                response = await self._client.chat.completions.create(
+                    messages=[{"role": "developer", "content": prompt}],
+                    model=self.model_name,
+                    response_format={"type": "json_object"},
+                    **openai_api_arguments,
+                )
+                t_end = time.time()
+            except RateLimitError as e:
+                raise RateLimitError(RATE_LIMIT_ERROR_MESSAGE, response=e.response, body=e.body)
 
             if response.usage:
                 self._logger.debug(response.usage.model_dump_json(indent=2))
@@ -274,12 +293,14 @@ class OpenAIEmbedder(Embedder):
         hints: Mapping[str, Any] = {},
     ) -> EmbeddingResult:
         filtered_hints = {k: v for k, v in hints.items() if k in self.supported_arguments}
-
-        response = await self._client.embeddings.create(
-            model=self.model_name,
-            input=texts,
-            **filtered_hints,
-        )
+        try:
+            response = await self._client.embeddings.create(
+                model=self.model_name,
+                input=texts,
+                **filtered_hints,
+            )
+        except RateLimitError as e:
+            raise RateLimitError(RATE_LIMIT_ERROR_MESSAGE, response=e.response, body=e.body)
 
         vectors = [data_point.embedding for data_point in response.data]
         return EmbeddingResult(vectors=vectors)
