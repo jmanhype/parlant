@@ -14,7 +14,14 @@
 
 from __future__ import annotations
 import time
-from openai import AsyncAzureOpenAI
+from openai import (
+    AsyncAzureOpenAI,
+    APIConnectionError,
+    APIResponseValidationError,
+    APITimeoutError,
+    InternalServerError,
+    RateLimitError,
+)  # type: ignore
 from typing import Any, Mapping
 from typing_extensions import override
 import json
@@ -25,6 +32,7 @@ import tiktoken
 
 from parlant.adapters.nlp.common import normalize_json_output
 from parlant.core.logging import Logger
+from parlant.core.nlp.policies import policy, retry
 from parlant.core.nlp.tokenization import EstimatingTokenizer
 from parlant.core.nlp.service import NLPService
 from parlant.core.nlp.embedding import Embedder, EmbeddingResult
@@ -71,6 +79,19 @@ class AzureSchematicGenerator(SchematicGenerator[T]):
     def tokenizer(self) -> AzureEstimatingTokenizer:
         return self._tokenizer
 
+    @policy(
+        [
+            retry(
+                exceptions=(
+                    APIConnectionError,
+                    APITimeoutError,
+                    RateLimitError,
+                    APIResponseValidationError,
+                )
+            ),
+            retry(InternalServerError, max_attempts=2, wait_times=(1.0, 5.0)),
+        ]
+    )
     async def generate(
         self,
         prompt: str,
@@ -88,12 +109,27 @@ class AzureSchematicGenerator(SchematicGenerator[T]):
 
         if hints.get("strict", False):
             t_start = time.time()
-            response = await self._client.beta.chat.completions.parse(
-                messages=[{"role": "user", "content": prompt}],
-                model=self.model_name,
-                response_format=self.schema,
-                **azure_api_arguments,
-            )
+            try:
+                response = await self._client.beta.chat.completions.parse(
+                    messages=[{"role": "user", "content": prompt}],
+                    model=self.model_name,
+                    response_format=self.schema,
+                    **azure_api_arguments,
+                )
+            except RateLimitError as e:
+                raise RateLimitError(
+                    "Azure API rate limit exceeded. Possible reasons:\n"
+                    "1. Your account may have insufficient API credits.\n"
+                    "2. You may be using a free-tier account with limited request capacity.\n"
+                    "3. You might have exceeded the requests-per-minute limit for your account.\n\n"
+                    "Recommended actions:\n"
+                    "- Check your Azure account balance and billing status.\n"
+                    "- Review your API usage limits in Azure's dashboard.\n"
+                    "- For more details on rate limits and usage tiers, visit:\n"
+                    "  https://learn.microsoft.com/en-us/azure/ai-services/openai/quotas-limits\n",
+                    response=e.response,
+                    body=e.body,
+                )
             t_end = time.time()
 
             if response.usage:
