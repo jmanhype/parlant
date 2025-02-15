@@ -63,8 +63,8 @@ class ChromaDatabase(VectorDatabase):
     ) -> None:
         pass
 
-    def _format_collection_name(self, name: str, embedder_type: type[Embedder]) -> str:
-        return f"{name}_{embedder_type.__name__}"
+    def format_collection_name(self, name: str, embedder_type: type[Embedder]) -> str:
+        return f"{name}_{embedder_type}"
 
     async def _load_collection_documents(
         self,
@@ -177,7 +177,7 @@ class ChromaDatabase(VectorDatabase):
             raise ValueError(f'Collection "{name}" already exists.')
 
         chroma_collection = self.chroma_client.create_collection(
-            name=self._format_collection_name(name, embedder_type),
+            name=self.format_collection_name(name, embedder_type),
             metadata={"version": 1},
             embedding_function=None,
         )
@@ -214,7 +214,7 @@ class ChromaDatabase(VectorDatabase):
             (
                 col
                 for col in self.chroma_client.list_collections()
-                if col.name == self._format_collection_name(name, embedder_type)
+                if col.name == self.format_collection_name(name, embedder_type)
             ),
             None,
         ):
@@ -286,11 +286,11 @@ class ChromaDatabase(VectorDatabase):
             (
                 col
                 for col in self.chroma_client.list_collections()
-                if col.name == self._format_collection_name(name, embedder_type)
+                if col.name == self.format_collection_name(name, embedder_type)
             ),
             None,
         ) or self.chroma_client.create_collection(
-            name=self._format_collection_name(name, embedder_type),
+            name=self.format_collection_name(name, embedder_type),
             metadata={"version": 1},
         )
 
