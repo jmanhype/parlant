@@ -146,7 +146,12 @@ class GuidelineProgram(Module):
         
         # Configure optimizer if needed
         if use_optimizer:
-            self.optimizer = COPRO(prompt_model=self.lm, init_temperature=0.7)
+            self.optimizer = COPRO(
+                prompt_model=self.lm,
+                init_temperature=0.7,
+                breadth=3,  # Number of candidates to generate
+                depth=1     # Number of iterations
+            )
             # Will be compiled later with actual training data
             
     def forward(self, **kwargs: Any) -> Dict[str, Any]:
