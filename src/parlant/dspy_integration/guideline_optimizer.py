@@ -2,7 +2,7 @@
 import logging
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Sequence, Union, ClassVar
+from typing import Any, Dict, List, Optional, Sequence, Union, ClassVar, Callable
 from dataclasses import dataclass
 from copy import deepcopy
 import requests
@@ -118,68 +118,38 @@ class MetricsLogger:
         return result
 
 
-class OllamaAdapter(dspy.Adapter):
+class OllamaAdapter(dspy.adapters.ChatAdapter):
     """Adapter for using Ollama models with DSPy.
     
     This adapter wraps an Ollama model to make it compatible with DSPy's
     language model interface. It handles the communication with the Ollama
     server and formats responses appropriately.
+    
+    Attributes:
+        model_name: Name of the Ollama model being used
+        _history: List of message dictionaries storing conversation history
+        kwargs: Dictionary of default parameters for model requests
     """
     
-    def __init__(self, model_name: str) -> None:
+    def __init__(self, model_name: str, callbacks: Optional[List[Callable]] = None) -> None:
         """Initialize the Ollama adapter.
         
         Args:
             model_name: Name of the Ollama model to use (e.g. 'ollama/llama2')
+            callbacks: Optional list of callback functions
         """
-        super().__init__()  # Initialize parent class
+        super().__init__(callbacks=callbacks)  # Initialize parent class with callbacks
         self.model_name = model_name.split("/")[1]  # Extract model name after 'ollama/'
+        self._history: List[Dict[str, str]] = []  # Store message history
         
         # Set default kwargs for DSPy
-        self.kwargs = {
+        self.kwargs: Dict[str, Any] = {
             "temperature": 0.7,
             "max_tokens": 200,
             "top_p": 0.9,
             "frequency_penalty": 0.0,
             "presence_penalty": 0.0,
             "stop": None
-        }
-        
-    def format(self, messages: List[Dict[str, str]]) -> str:
-        """Format a list of messages into a prompt string.
-        
-        Args:
-            messages: List of messages to format
-            
-        Returns:
-            Formatted prompt string
-        """
-        formatted_messages = []
-        for msg in messages:
-            role = msg.get("role", "user")
-            content = msg.get("content", "")
-            
-            if role == "system":
-                formatted_messages.append(f"System: {content}")
-            elif role == "user":
-                formatted_messages.append(f"User: {content}")
-            elif role == "assistant":
-                formatted_messages.append(f"Assistant: {content}")
-                
-        return "\n".join(formatted_messages)
-        
-    def parse(self, response: str) -> Dict[str, str]:
-        """Parse a response string into a message dictionary.
-        
-        Args:
-            response: Response string to parse
-            
-        Returns:
-            Message dictionary with role and content
-        """
-        return {
-            "role": "assistant",
-            "content": self._clean_response(response)
         }
         
     def _clean_response(self, response: str) -> str:
@@ -219,15 +189,20 @@ class OllamaAdapter(dspy.Adapter):
             
         return response
     
-    def basic_request(self, prompt: str, **kwargs: Any) -> Dict[str, str]:
-        """Make a basic request to the Ollama model.
+    def __call__(self, prompt: str, **kwargs: Any) -> List[str]:
+        """Call the Ollama model with a prompt.
+        
+        This method is called by DSPy when using the adapter as a language model.
         
         Args:
             prompt: The prompt to send to the model
             **kwargs: Additional arguments for the request
             
         Returns:
-            Dictionary containing the model's response
+            List containing the model's response as a string
+            
+        Raises:
+            requests.RequestException: If the API request fails
         """
         try:
             # Merge default kwargs with provided kwargs
@@ -252,30 +227,57 @@ class OllamaAdapter(dspy.Adapter):
             result = response.json()
             cleaned_response = self._clean_response(result.get("response", ""))
             
-            return {
+            # Store in history
+            self._history.append({
+                "role": "user",
+                "content": prompt
+            })
+            self._history.append({
+                "role": "assistant",
                 "content": cleaned_response
-            }
+            })
+            
+            return [cleaned_response]
             
         except Exception as e:
             logger.error(f"Failed to get response from Ollama: {e}")
-            return {
-                "content": "I apologize, but I am unable to process your request at the moment."
-            }
-    
-    def __call__(self, prompt: str, **kwargs: Any) -> str:
-        """Call the Ollama model with a prompt.
+            return ["I apologize, but I am unable to process your request at the moment."]
+            
+    def format(self, signature: dspy.Signature, demos: List[Dict[str, Any]], inputs: Dict[str, Any]) -> List[Dict[str, str]]:
+        """Format messages for the Ollama model.
         
-        This method is called by DSPy when using the adapter as a language model.
+        Formats the input signature, demos, and inputs into a list of messages
+        that can be sent to the Ollama model.
         
         Args:
-            prompt: The prompt to send to the model
-            **kwargs: Additional arguments for the request
+            signature: The DSPy signature to format messages for
+            demos: List of example dictionaries with input and output fields
+            inputs: Dictionary of input fields for the current request
             
         Returns:
-            The model's response as a string
+            List of message dictionaries with role and content fields
         """
-        response = self.basic_request(prompt, **kwargs)
-        return response["content"]
+        messages = super().format(signature, demos, inputs)
+        self._history = messages  # Store formatted messages in history
+        return messages
+    
+    def inspect_history(self, n: int = 1) -> List[Dict[str, str]]:
+        """Inspect the history of messages for debugging.
+        
+        Args:
+            n: Optional number of messages to return
+            
+        Returns:
+            List of message dictionaries with role and content fields
+        """
+        if not self._history:
+            return []
+            
+        if n is not None:
+            # Return last n messages if specified
+            return self._history[-n:]
+            
+        return self._history
 
 
 class CustomerServiceSignature(dspy.Signature):
