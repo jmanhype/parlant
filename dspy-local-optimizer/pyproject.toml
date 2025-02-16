@@ -1,0 +1,34 @@
+[project]
+name = "dspy-local-optimizer"
+version = "0.1.0"
+description = "DSPy-based optimizer for local models"
+authors = [
+    { name = "Your Name", email = "your.email@example.com" }
+]
+dependencies = [
+    "dspy-ai",
+    "pydantic",
+    "loguru",
+    "openai",
+    "ollama",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+]
