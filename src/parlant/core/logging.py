@@ -21,8 +21,9 @@ from pathlib import Path
 import structlog
 import time
 import traceback
-from typing import Any, Iterator, Sequence
+from typing import Any, Iterator, Sequence, Protocol, Dict, List, Optional
 from typing_extensions import override
+import json
 
 from parlant.core.contextual_correlator import ContextualCorrelator
 
@@ -44,31 +45,39 @@ class LogLevel(Enum):
         }[self]
 
 
-class Logger(ABC):
-    @abstractmethod
-    def set_level(self, log_level: LogLevel) -> None: ...
-
-    @abstractmethod
-    def debug(self, message: str) -> None: ...
-
-    @abstractmethod
-    def info(self, message: str) -> None: ...
-
-    @abstractmethod
-    def warning(self, message: str) -> None: ...
-
-    @abstractmethod
-    def error(self, message: str) -> None: ...
-
-    @abstractmethod
-    def critical(self, message: str) -> None: ...
-
-    @abstractmethod
-    @contextmanager
+class Logger(Protocol):
+    """Protocol for logging interface."""
+    
+    def debug(self, message: str) -> None:
+        """Log debug message."""
+        ...
+    
+    def info(self, message: str) -> None:
+        """Log info message."""
+        ...
+    
+    def warning(self, message: str) -> None:
+        """Log warning message."""
+        ...
+    
+    def error(self, message: str) -> None:
+        """Log error message."""
+        ...
+    
+    def critical(self, message: str) -> None:
+        """Log critical message."""
+        ...
+    
     def operation(self, name: str, props: dict[str, Any] = {}) -> Iterator[None]: ...
+    
+    def set_level(self, level: str) -> None:
+        """Set log level."""
+        ...
 
 
 class CorrelationalLogger(Logger):
+    """Logger that tracks correlations between operations."""
+    
     def __init__(
         self,
         correlator: ContextualCorrelator,
@@ -225,3 +234,48 @@ class CompositeLogger(Logger):
             for context in [logger.operation(name, props) for logger in self._loggers]:
                 stack.enter_context(context)
             yield
+
+
+def get_logger(name: str) -> Logger:
+    """Get a logger instance.
+    
+    Args:
+        name: Name of the logger
+        
+    Returns:
+        Logger instance
+    """
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.INFO)
+    
+    # Add console handler if none exists
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
+        logger.addHandler(handler)
+    
+    # Create wrapper that implements our protocol
+    class LoggerWrapper:
+        def debug(self, message: str) -> None:
+            logger.debug(message)
+        
+        def info(self, message: str) -> None:
+            logger.info(message)
+        
+        def warning(self, message: str) -> None:
+            logger.warning(message)
+        
+        def error(self, message: str) -> None:
+            logger.error(message)
+        
+        def critical(self, message: str) -> None:
+            logger.critical(message)
+        
+        def operation(self, name: str, props: dict[str, Any] = {}) -> Iterator[None]:
+            logger.info(f"OPERATION {name}: {json.dumps(props) if props else ''}")
+            yield
+        
+        def set_level(self, level: str) -> None:
+            logger.setLevel(getattr(logging, level.upper()))
+    
+    return LoggerWrapper()
