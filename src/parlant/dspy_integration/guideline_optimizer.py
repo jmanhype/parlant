@@ -2,11 +2,14 @@
 import logging
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Union, ClassVar
 from dataclasses import dataclass
+from copy import deepcopy
+import requests
+import difflib
 
 import dspy
-from dspy import ChainOfThought, Example, LM, Module, Signature
+from dspy import ChainOfThought, Example, LM, Module, Signature, Prediction, InputField, OutputField
 from dspy.teleprompt import COPRO
 
 from parlant.core.guidelines import Guideline, GuidelineContent
@@ -35,7 +38,7 @@ class OptimizationBatch:
 class MetricsLogger:
     """Wrapper around language model to track metrics."""
     
-    def __init__(self, lm: LM, metrics: ModelMetrics):
+    def __init__(self, lm: LM, metrics: ModelMetrics) -> None:
         """Initialize the metrics logger.
         
         Args:
@@ -115,199 +118,369 @@ class MetricsLogger:
         return result
 
 
-class GuidelineProgram(dspy.Module):
-    """A DSPy program for generating and optimizing customer service responses.
+class OllamaAdapter(dspy.Adapter):
+    """Adapter for using Ollama models with DSPy.
     
-    This program uses a language model to generate professional and effective
-    customer service responses based on given conditions. It can be optionally
-    optimized using DSPy's COPRO optimizer.
-    
-    Attributes:
-        condition: Input field for the customer service condition
-        response: Output field for the generated response
-        lm: Language model instance for generating responses
+    This adapter wraps an Ollama model to make it compatible with DSPy's
+    language model interface. It handles the communication with the Ollama
+    server and formats responses appropriately.
     """
-
-    def __init__(self, api_key: Optional[str] = None, model_name: str = "openai/gpt-3.5-turbo", metrics: Optional[ModelMetrics] = None) -> None:
-        """Initialize the program with a language model.
+    
+    def __init__(self, model_name: str) -> None:
+        """Initialize the Ollama adapter.
         
         Args:
-            api_key: Optional API key for the model provider. If not provided, uses the configured LM.
-            model_name: Name of the model to use (e.g., "openai/gpt-3.5-turbo", "ollama/llama2")
-            metrics: Optional metrics tracker for monitoring performance
+            model_name: Name of the Ollama model to use (e.g. 'ollama/llama2')
         """
-        super().__init__()
+        super().__init__()  # Initialize parent class
+        self.model_name = model_name.split("/")[1]  # Extract model name after 'ollama/'
         
-        # Define input/output fields
-        self.condition = dspy.InputField(desc="The customer service condition/scenario to respond to")
-        self.response = dspy.OutputField(desc="The generated customer service response")
+        # Set default kwargs for DSPy
+        self.kwargs = {
+            "temperature": 0.7,
+            "max_tokens": 200,
+            "top_p": 0.9,
+            "frequency_penalty": 0.0,
+            "presence_penalty": 0.0,
+            "stop": None
+        }
         
-        # Configure language model if needed
-        if api_key:
-            # Initialize Ollama if needed
-            if "ollama" in model_name:
-                ollama_model = model_name.split("/")[1]
-                initialize_ollama_model(ollama_model)
-            
-            # Configure the language model
-            self.lm = LM(model_name, api_key=api_key, temperature=0.7, max_tokens=200)
-            if metrics:
-                self.lm = MetricsLogger(self.lm, metrics)
-            dspy.configure(lm=self.lm)
-
-    def forward(self, condition: str) -> Dict[str, str]:
-        """Generate a customer service response for a given condition.
-        
-        This method uses the configured language model to generate a professional
-        and effective response following customer service best practices.
+    def format(self, messages: List[Dict[str, str]]) -> str:
+        """Format a list of messages into a prompt string.
         
         Args:
-            condition: The customer service condition/scenario to respond to
+            messages: List of messages to format
             
         Returns:
-            Dictionary containing the generated response under the 'response' key
+            Formatted prompt string
+        """
+        formatted_messages = []
+        for msg in messages:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            
+            if role == "system":
+                formatted_messages.append(f"System: {content}")
+            elif role == "user":
+                formatted_messages.append(f"User: {content}")
+            elif role == "assistant":
+                formatted_messages.append(f"Assistant: {content}")
+                
+        return "\n".join(formatted_messages)
+        
+    def parse(self, response: str) -> Dict[str, str]:
+        """Parse a response string into a message dictionary.
+        
+        Args:
+            response: Response string to parse
+            
+        Returns:
+            Message dictionary with role and content
+        """
+        return {
+            "role": "assistant",
+            "content": self._clean_response(response)
+        }
+        
+    def _clean_response(self, response: str) -> str:
+        """Clean and format the response from Ollama.
+        
+        This method handles various response formats and ensures they are
+        properly formatted for DSPy.
+        
+        Args:
+            response: Raw response from Ollama
+            
+        Returns:
+            Cleaned and formatted response string
+        """
+        # Remove any leading/trailing whitespace
+        response = response.strip()
+        
+        # If response starts with '[', it's likely JSON-formatted
+        if response.startswith("["):
+            # Try to extract actual content
+            try:
+                # Look for actual content after the [
+                content_start = response.find("[") + 1
+                content_end = response.rfind("]")
+                if content_start < content_end:
+                    response = response[content_start:content_end].strip()
+            except:
+                pass
+            
+        # Remove any role prefixes
+        for prefix in ["System:", "User:", "Assistant:"]:
+            response = response.replace(prefix, "").strip()
+        
+        # If response is empty after cleaning, provide a default
+        if not response:
+            response = "I apologize, but I need more information to provide a helpful response."
+            
+        return response
+    
+    def basic_request(self, prompt: str, **kwargs: Any) -> Dict[str, str]:
+        """Make a basic request to the Ollama model.
+        
+        Args:
+            prompt: The prompt to send to the model
+            **kwargs: Additional arguments for the request
+            
+        Returns:
+            Dictionary containing the model's response
+        """
+        try:
+            # Merge default kwargs with provided kwargs
+            request_kwargs = self.kwargs.copy()
+            request_kwargs.update(kwargs)
+            
+            # Make request to Ollama
+            response = requests.post(
+                "http://localhost:11434/api/generate",
+                json={
+                    "model": self.model_name,
+                    "prompt": prompt,
+                    "stream": False,
+                    "temperature": request_kwargs["temperature"],
+                    "top_p": request_kwargs["top_p"],
+                    "max_tokens": request_kwargs["max_tokens"]
+                }
+            )
+            response.raise_for_status()
+            
+            # Parse response
+            result = response.json()
+            cleaned_response = self._clean_response(result.get("response", ""))
+            
+            return {
+                "content": cleaned_response
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get response from Ollama: {e}")
+            return {
+                "content": "I apologize, but I am unable to process your request at the moment."
+            }
+    
+    def __call__(self, prompt: str, **kwargs: Any) -> str:
+        """Call the Ollama model with a prompt.
+        
+        This method is called by DSPy when using the adapter as a language model.
+        
+        Args:
+            prompt: The prompt to send to the model
+            **kwargs: Additional arguments for the request
+            
+        Returns:
+            The model's response as a string
+        """
+        response = self.basic_request(prompt, **kwargs)
+        return response["content"]
+
+
+class CustomerServiceSignature(dspy.Signature):
+    """A signature for generating customer service responses.
+    
+    This signature defines the input and output fields for generating
+    professional and helpful customer service responses based on given
+    conditions.
+    """
+    
+    inputs: ClassVar[List[str]] = ['condition']
+    
+    condition: str = dspy.InputField(
+        desc="The customer service condition to respond to",
+        prefix="CONDITION: ",
+        default=""
+    )
+    
+    response: str = dspy.OutputField(
+        desc="A helpful and professional response to the condition",
+        prefix="RESPONSE: ",
+        default=""
+    )
+    
+    instructions: ClassVar[str] = """You are a professional customer service representative.
+
+    Your task is to generate helpful, empathetic, and professional responses to customer service inquiries.
+    
+    Rules:
+    1. Always be polite and professional
+    2. Show empathy and understanding
+    3. Provide clear and actionable information
+    4. Ask for clarification when needed
+    5. Maintain a positive and helpful tone
+    
+    Format:
+    condition -> response
+    
+    Examples:
+    'Customer asks about pricing' -> 'Thank you for your interest in our pricing. I'd be happy to explain our different pricing tiers. Could you please let me know what specific features or plans you're interested in?'
+    
+    'Customer reports a bug' -> 'I apologize for the inconvenience you're experiencing. To help resolve this issue, could you please provide more details about the bug? This will help us investigate and fix it as quickly as possible.'
+    
+    'Customer requests a refund' -> 'I understand you'd like a refund. I'll be happy to help you with this process. Could you please provide your order number and the reason for the refund request?'
+    
+    Let's solve this step by step:
+    1. Understand the customer's condition
+    2. Show empathy and acknowledge their concern
+    3. Provide relevant information or ask for clarification
+    4. Offer clear next steps or solutions
+    5. End with a professional and helpful tone
+    """
+
+
+class CustomerServiceProgram(dspy.Module):
+    """A DSPy module that generates customer service responses based on conditions.
+    
+    This module uses a predictor to generate contextually appropriate
+    and professional responses to customer service inquiries.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the CustomerServiceProgram with a predictor."""
+        super().__init__()
+        
+        # Create the predictor with our signature
+        self.predictor = dspy.Predict(CustomerServiceSignature)
+
+    def forward(self, **inputs: Any) -> Dict[str, str]:
+        """Generate a customer service response based on a condition.
+        
+        Args:
+            **inputs: Input dictionary containing 'condition' key
+            
+        Returns:
+            Dict containing the generated response
             
         Raises:
-            ValueError: If no condition is provided
+            ValueError: If condition is not provided or not a string
         """
-        if not condition:
-            raise ValueError("Condition must be provided")
+        # Step 1: Get condition from inputs
+        condition = inputs.get('condition')
+        if not condition or not isinstance(condition, str):
+            raise ValueError("Must provide 'condition' as a string")
+        
+        # Step 2: Process using predictor
+        result = self.predictor(**inputs)
+        
+        # Step 3: Return response
+        return {"response": result.response}
+
+    def deepcopy(self) -> 'CustomerServiceProgram':
+        """Create a deep copy of this program.
+        
+        Returns:
+            A new instance of CustomerServiceProgram
+        """
+        return CustomerServiceProgram()
+
+    def predictors(self) -> List[dspy.Predict]:
+        """Get the predictors used by this program.
+        
+        Returns:
+            A list containing the predictor
+        """
+        return [self.predictor]
+
+
+class CustomCOPRO(dspy.teleprompt.COPRO):
+    """A custom COPRO optimizer that handles extended_signature gracefully.
+    
+    This subclass overrides the behavior of setting extended_signature to avoid
+    the error in DSPy 2.5.
+    """
+    
+    def compile(
+        self, 
+        student: CustomerServiceProgram, 
+        *, 
+        trainset: List[dspy.Example],
+        eval_kwargs: Dict[str, Any]
+    ) -> Optional[CustomerServiceProgram]:
+        """Compile the program with training examples.
+        
+        This method overrides the parent's compile method to handle the
+        extended_signature attribute gracefully.
+        
+        Args:
+            student: The program to optimize
+            trainset: List of training examples
+            eval_kwargs: Additional arguments for evaluation
             
-        # Generate response using DSPy signature
-        response = dspy.Predict("condition -> response")(condition=condition).response
-        return {"response": response}
+        Returns:
+            The optimized program, or None if optimization fails
+        """
+        try:
+            # Try to compile normally
+            return super().compile(student, trainset=trainset, eval_kwargs=eval_kwargs)
+        except AttributeError as e:
+            if "extended_signature" in str(e):
+                # If the error is about extended_signature, just return the original program
+                logger.warning("COPRO optimization failed due to extended_signature, using original program")
+                return student
+            raise
 
 
 class BatchOptimizedGuidelineManager:
-    """Manager for optimizing multiple guidelines using DSPy.
+    """A manager for optimizing and generating customer service responses.
     
-    This class handles the optimization of multiple guidelines in batches,
-    using DSPy's COPRO optimizer to improve response quality.
+    This class uses DSPy's COPRO optimizer to improve response quality and
+    handles batched optimization of guidelines. It supports both OpenAI and
+    Ollama models, with appropriate configuration for each.
     
     Attributes:
-        metrics: Metrics tracker for monitoring performance
-        lm: Language model instance for generating responses
-        program: GuidelineProgram instance for response generation
-        optimizer: Optional COPRO optimizer for improving response quality
+        metrics: Metrics tracker for monitoring model performance
         use_optimizer: Whether to use DSPy's COPRO optimizer
+        lm: Language model instance for generating responses
+        program: Base program for generating customer service responses
     """
     
-    def __init__(self, api_key: str, model_name: str = "openai/gpt-3.5-turbo", use_optimizer: bool = True) -> None:
-        """Initialize the manager.
+    def __init__(
+            self,
+            api_key: Optional[str] = None,
+            model_name: str = "openai/gpt-3.5-turbo",
+            metrics: Optional[ModelMetrics] = None,
+            use_optimizer: bool = True
+        ) -> None:
+        """Initialize the guideline manager.
         
         Args:
-            api_key: API key for the model provider
-            model_name: Name of the model to use (e.g., "openai/gpt-3.5-turbo", "ollama/llama2")
-            use_optimizer: Whether to use DSPy's COPRO optimizer
+            api_key: Optional API key for the model provider
+            model_name: Name of the model to use (e.g. 'openai/gpt-3.5-turbo' or 'ollama/llama2')
+            metrics: Optional metrics tracker for monitoring model performance
+            use_optimizer: Whether to use DSPy's COPRO optimizer for improving responses
+            
+        Raises:
+            ValueError: If an invalid model name is provided
+            RuntimeError: If initialization of the language model fails
         """
-        self.metrics = ModelMetrics()
+        self.metrics = metrics or ModelMetrics()
         self.use_optimizer = use_optimizer
         
-        # Initialize Ollama if needed
-        if "ollama" in model_name:
-            ollama_model = model_name.split("/")[1]
-            initialize_ollama_model(ollama_model)
-        
-        # Configure the language model
-        self.lm = LM(model_name, api_key=api_key, temperature=0.7, max_tokens=200)
-        if self.metrics:
-            self.lm = MetricsLogger(self.lm, self.metrics)
-        dspy.configure(lm=self.lm)
-        
-        # Create base program
-        self.program = GuidelineProgram(metrics=self.metrics)  # Use the configured LM
-        
-        # Configure optimizer if needed
-        if use_optimizer:
-            self.optimizer = COPRO(
-                prompt_model=self.lm,
-                init_temperature=1.0,  # Higher temperature for more diverse responses
-                breadth=12,           # More candidates
-                depth=4,              # More iterations for refinement
-                threshold=0.5,        # More lenient threshold
-                metric=self._calculate_response_quality
-            )
-
-    def _calculate_response_quality(self, pred: Any, gold: Any) -> float:
-        """Calculate quality score for a response.
-        
-        The score is based on multiple factors including:
-        - Response length (30-150 words preferred)
-        - Use of professional language
-        - Overlap with gold response terminology
-        - Presence of follow-up questions
-        - Proper sentence endings
-        
-        Args:
-            pred: Predicted response
-            gold: Gold/reference response
+        try:
+            # Configure language model
+            if "ollama" in model_name:
+                # For Ollama models, use our custom adapter
+                ollama_model = model_name.split("/")[1]
+                initialize_ollama_model(ollama_model)
+                self.lm = OllamaAdapter(model_name)
+            else:
+                # For other models like OpenAI, use all parameters
+                self.lm = LM(model_name, api_key=api_key, temperature=0.7, max_tokens=200)
+                
+            if metrics:
+                self.lm = MetricsLogger(self.lm, metrics)
+                
+            # Configure DSPy with the language model
+            dspy.configure(lm=self.lm)
             
-        Returns:
-            Quality score between 0 and 1
-        """
-        # Extract response strings from prediction and gold
-        pred_str = pred.get("response", "") if isinstance(pred, dict) else getattr(pred, "response", "")
-        gold_str = gold.get("response", "") if isinstance(gold, dict) else getattr(gold, "response", "")
-        
-        # If either response is missing, return 0
-        if not pred_str or not gold_str:
-            return 0.0
+            # Create base program
+            self.program = CustomerServiceProgram()
             
-        score = 0.3  # Base score for any valid response
-        
-        # Length check - prefer concise responses but be more lenient
-        words = len(pred_str.split())
-        if 30 <= words <= 100:  # Sweet spot
-            score += 0.2
-        elif 20 <= words <= 150:  # Still acceptable
-            score += 0.1
-            
-        # Contains relevant terminology from gold response
-        gold_words = set(gold_str.lower().split())
-        pred_words = set(pred_str.lower().split())
-        overlap = len(gold_words.intersection(pred_words))
-        score += min(0.2, overlap * 0.02)  # More lenient word overlap
-            
-        # Professional language - award partial points for each term
-        professional_terms = [
-            "please", "thank", "assist", "help", "understand", "appreciate",
-            "apologize", "sorry", "support", "resolve", "investigate",
-            "provide", "explain", "guide", "recommend"
-        ]
-        prof_count = sum(1 for term in professional_terms if term in pred_str.lower())
-        score += min(0.2, prof_count * 0.04)  # More credit for professional terms
-            
-        # Check for specific response elements
-        if "?" in pred_str:  # Has follow-up questions
-            score += 0.1
-            
-        if any(pred_str.strip().endswith(p) for p in [".", "!", "?"]):  # Complete sentence
-            score += 0.1
-            
-        if any(char.isdigit() for char in pred_str):  # Contains specific numbers/details
-            score += 0.1
-            
-        # Structure and formatting
-        if len(pred_str.split("\n")) > 1:  # Good formatting with line breaks
-            score += 0.1
-            
-        # Deductions
-        deductions = 0.0
-        
-        # Error messages or debugging info
-        error_terms = ["error:", "exception:", "debug:", "traceback", "undefined", "null"]
-        if any(term in pred_str.lower() for term in error_terms):
-            deductions += 0.3
-            
-        # Very short or very long responses
-        if words < 15 or words > 200:
-            deductions += 0.2
-            
-        # Repetitive text
-        if len(set(pred_str.split())) < len(pred_str.split()) / 3:
-            deductions += 0.2
-            
-        return max(0.0, min(1.0, score - deductions))
+        except Exception as e:
+            logger.error(f"Failed to initialize guideline manager: {e}")
+            raise RuntimeError(f"Failed to initialize guideline manager: {e}") from e
 
     def optimize_guidelines(
             self, 
@@ -317,93 +490,149 @@ class BatchOptimizedGuidelineManager:
         ) -> List[Guideline]:
         """Optimize guidelines using DSPy's COPRO optimizer.
         
-        This method processes guidelines in batches, using the COPRO optimizer
-        to improve response quality based on example data.
+        This method takes a list of guidelines and example responses, then uses
+        COPRO to optimize the response generation process. Guidelines are processed
+        in batches to improve efficiency.
         
         Args:
             guidelines: List of guidelines to optimize
-            examples: List of example dictionaries for training
-            batch_size: Size of batches for optimization
+            examples: List of example dictionaries with 'condition' and 'response' keys
+            batch_size: Number of guidelines to optimize at once
             
         Returns:
             List of optimized guidelines with improved responses
         """
-        logger.info(f"Starting optimization of {len(guidelines)} guidelines")
-        start_time = time.time()
-        
-        # Convert examples to DSPy format
-        dspy_examples = []
-        for ex in examples:
-            example = Example(
-                condition=ex["condition"],
-                response=ex["response"]
-            ).with_inputs("condition")
-            dspy_examples.append(example)
-        
-        # Compile the program with examples if using optimizer
-        if hasattr(self, "optimizer"):
-            try:
-                # Create an evaluator for the optimizer
-                evaluator = dspy.Evaluate(
-                    devset=dspy_examples[:2],  # Use a smaller dev set for faster evaluation
-                    metric=self.optimizer.metric
-                )
-                
-                # Compile with the evaluator
-                with dspy.settings.context(lm=self.lm):
-                    try:
-                        # Run optimization
-                        optimized_program = self.optimizer.compile(
-                            self.program,
-                            trainset=dspy_examples[2:],  # Use remaining examples for training
-                            eval_kwargs={"evaluator": evaluator}
-                        )
-                        
-                        # Update program if optimization succeeded
-                        if optimized_program:
-                            logger.info("Successfully optimized program with COPRO")
-                            self.program = optimized_program
-                        else:
-                            logger.warning("COPRO optimization returned None, using original program")
-                            
-                    except IndexError:
-                        logger.warning("No valid candidates found during optimization, using original program")
-                    except Exception as e:
-                        logger.error(f"Failed to compile optimizer: {e}")
-                        logger.debug("Falling back to unoptimized program", exc_info=True)
-                    
-            except Exception as e:
-                logger.error(f"Failed to set up optimization: {e}")
-                logger.debug("Falling back to unoptimized program", exc_info=True)
-                
         optimized_guidelines = []
         
-        # Process guidelines in batches
         for i in range(0, len(guidelines), batch_size):
             batch = guidelines[i:i + batch_size]
             
-            # Process each guideline in the batch
-            for guideline in batch:
-                try:
-                    # Generate response using the program
-                    result = self.program(condition=guideline.content.condition)
-                    response = result.get("response", "")
+            # Create training examples
+            train_examples = []
+            for example in examples:
+                # Create example with proper input/output fields
+                ex = dspy.Example(
+                    condition=example['condition'],
+                    response=example['response']
+                ).with_inputs('condition')  # Explicitly set which fields are inputs
+                train_examples.append(ex)
+            
+            try:
+                # Configure COPRO optimizer with evaluation metric
+                copro = CustomCOPRO(
+                    prompt_model=self.lm,
+                    metric=self._calculate_response_quality,
+                    breadth=5,  # Number of new prompts to generate at each iteration
+                    depth=3,  # Number of optimization iterations
+                    init_temperature=1.4  # Temperature for generating new prompts
+                )
+                
+                # Compile the program with training examples
+                optimized_program = copro.compile(
+                    student=self.program,
+                    trainset=train_examples,
+                    eval_kwargs={}  # Metric is already passed to COPRO constructor
+                )
+                
+                # Generate responses for each guideline
+                if optimized_program:
+                    for guideline in batch:
+                        try:
+                            # Generate response using optimized program
+                            pred = optimized_program(condition=guideline.content.condition)
+                            
+                            # Extract response from prediction
+                            response = pred.response if hasattr(pred, 'response') else pred['response']
+                            
+                            # Create new guideline with updated response
+                            optimized_guidelines.append(Guideline(
+                                id=guideline.id,
+                                creation_utc=guideline.creation_utc,
+                                content=GuidelineContent(
+                                    condition=guideline.content.condition,
+                                    action=response
+                                )
+                            ))
+                        except Exception as e:
+                            logger.warning(f"Failed to optimize guideline: {str(e)}")
+                            # Fall back to original program
+                            pred = self.program(condition=guideline.content.condition)
+                            response = pred.response if hasattr(pred, 'response') else pred['response']
+                            
+                            # Create new guideline with updated response
+                            optimized_guidelines.append(Guideline(
+                                id=guideline.id,
+                                creation_utc=guideline.creation_utc,
+                                content=GuidelineContent(
+                                    condition=guideline.content.condition,
+                                    action=response
+                                )
+                            ))
+                else:
+                    logger.warning("No valid candidates found during optimization, using original program")
+                    for guideline in batch:
+                        pred = self.program(condition=guideline.content.condition)
+                        response = pred.response if hasattr(pred, 'response') else pred['response']
+                        
+                        # Create new guideline with updated response
+                        optimized_guidelines.append(Guideline(
+                            id=guideline.id,
+                            creation_utc=guideline.creation_utc,
+                            content=GuidelineContent(
+                                condition=guideline.content.condition,
+                                action=response
+                            )
+                        ))
+                        
+            except Exception as e:
+                logger.warning(f"Failed to optimize batch: {str(e)}")
+                for guideline in batch:
+                    pred = self.program(condition=guideline.content.condition)
+                    response = pred.response if hasattr(pred, 'response') else pred['response']
                     
-                    # Create new optimized guideline
-                    optimized_guideline = Guideline(
+                    # Create new guideline with updated response
+                    optimized_guidelines.append(Guideline(
                         id=guideline.id,
                         creation_utc=guideline.creation_utc,
                         content=GuidelineContent(
                             condition=guideline.content.condition,
                             action=response
                         )
-                    )
-                    optimized_guidelines.append(optimized_guideline)
-                    
-                except Exception as e:
-                    logger.error(f"Failed to optimize guideline {guideline.id}: {e}")
-                    # Keep original guideline on error
-                    optimized_guidelines.append(guideline)
-        
-        self.metrics.total_time = time.time() - start_time
+                    ))
+                
         return optimized_guidelines
+
+    def _calculate_response_quality(
+        self, 
+        example: dspy.Example, 
+        pred: Union[dspy.Prediction, Dict[str, str]]
+    ) -> float:
+        """Calculate the quality score for a predicted response.
+        
+        This method evaluates the quality of a predicted response by comparing it
+        to the expected response in the example.
+        
+        Args:
+            example: The example containing the expected response
+            pred: Dictionary or Prediction containing the predicted response
+            
+        Returns:
+            A quality score between 0 and 1, where higher is better
+        """
+        try:
+            # Extract expected and predicted responses
+            expected_response = example.response
+            predicted_response = pred.response if hasattr(pred, 'response') else pred['response']
+            
+            # Simple string matching for now
+            # TODO: Use more sophisticated metrics like semantic similarity
+            if predicted_response and expected_response:
+                # Calculate basic string similarity
+                similarity = difflib.SequenceMatcher(None, predicted_response, expected_response).ratio()
+                return similarity
+            
+            return 0.0
+            
+        except Exception as e:
+            logger.error(f"Error calculating response quality: {str(e)}")
+            return 0.0

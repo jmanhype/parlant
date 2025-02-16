@@ -9,7 +9,7 @@ import dspy
 from dspy.teleprompt import COPRO
 
 from parlant.core.guidelines import Guideline, GuidelineContent
-from parlant.dspy_integration.guideline_optimizer import BatchOptimizedGuidelineManager, GuidelineProgram
+from parlant.dspy_integration.guideline_optimizer import BatchOptimizedGuidelineManager, CustomerServiceProgram
 
 # Example guidelines
 GUIDELINES = [
@@ -155,7 +155,7 @@ def run_optimization(model_name: str, batch_size: int = 5) -> None:
             threshold=0.5,             # More lenient threshold
             top_k=3,                   # Keep top 3 candidates at each step
             max_steps=50,              # Allow more optimization steps
-            metric=lambda pred, gold: GuidelineProgram()._calculate_response_quality(
+            metric=lambda pred, gold: CustomerServiceProgram()._calculate_response_quality(
                 pred.get("response", "") if isinstance(pred, dict) else getattr(pred, "response", ""),
                 gold.get("response", "") if isinstance(gold, dict) else getattr(gold, "response", "")
             )
