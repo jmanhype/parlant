@@ -1,4 +1,5 @@
 """DSPy integration for optimizing guidelines."""
+import difflib
 import logging
 import time
 from datetime import datetime
@@ -6,7 +7,6 @@ from typing import Any, Dict, List, Optional, Sequence, Union, ClassVar, Callabl
 from dataclasses import dataclass
 from copy import deepcopy
 import requests
-import difflib
 
 import dspy
 from dspy import ChainOfThought, Example, LM, Module, Signature, Prediction, InputField, OutputField
@@ -47,6 +47,7 @@ class MetricsLogger:
         """
         self.lm = lm
         self.metrics = metrics
+        self.start_time = None
         
     def __getattr__(self, name: str) -> Any:
         """Forward attribute access to wrapped language model.
@@ -63,25 +64,36 @@ class MetricsLogger:
         # If it's a method, wrap it to track metrics
         if callable(attr):
             def wrapper(*args: Any, **kwargs: Any) -> Any:
+                if self.start_time is None:
+                    self.start_time = time.time()
+                
                 self.metrics.total_api_calls += 1
                 result = attr(*args, **kwargs)
-                logger.info(f"Response format: {type(result)}")
-                logger.info(f"Response content: {result}")
-                if hasattr(result, 'usage') and hasattr(result.usage, 'total_tokens'):
+                
+                # Update total time
+                self.metrics.total_time = time.time() - self.start_time
+                
+                # Handle different response formats
+                if isinstance(result, dict):
+                    # For Ollama responses
+                    if 'response' in result:
+                        # Rough estimate: 1 token per 4 characters
+                        self.metrics.total_tokens += len(result['response']) // 4
+                elif isinstance(result, list):
+                    # For DSPy responses that are lists
+                    for r in result:
+                        if isinstance(r, str):
+                            # Rough estimate: 1 token per 4 characters
+                            self.metrics.total_tokens += len(r) // 4
+                        elif isinstance(r, dict) and 'response' in r:
+                            # For OpenAI-style responses in a list
+                            self.metrics.total_tokens += len(r['response']) // 4
+                elif hasattr(result, 'usage') and hasattr(result.usage, 'total_tokens'):
+                    # For OpenAI responses
                     self.metrics.total_tokens += result.usage.total_tokens
                 elif hasattr(result, 'usage') and isinstance(result.usage, dict) and 'total_tokens' in result.usage:
                     self.metrics.total_tokens += result.usage['total_tokens']
-                elif isinstance(result, list) and result and isinstance(result[0], dict) and 'usage' in result[0]:
-                    for r in result:
-                        if 'usage' in r and 'total_tokens' in r['usage']:
-                            self.metrics.total_tokens += r['usage']['total_tokens']
-                elif isinstance(result, dict) and 'usage' in result and 'total_tokens' in result['usage']:
-                    self.metrics.total_tokens += result['usage']['total_tokens']
-                elif isinstance(result, list) and result and isinstance(result[0], str):
-                    # For DSPy responses that are lists of strings, estimate tokens
-                    for r in result:
-                        # Rough estimate: 1 token per 4 characters
-                        self.metrics.total_tokens += len(r) // 4
+                
                 return result
             return wrapper
         return attr
@@ -96,25 +108,36 @@ class MetricsLogger:
         Returns:
             Model output
         """
+        if self.start_time is None:
+            self.start_time = time.time()
+            
         self.metrics.total_api_calls += 1
         result = self.lm(*args, **kwargs)
-        logger.info(f"Response format: {type(result)}")
-        logger.info(f"Response content: {result}")
-        if hasattr(result, 'usage') and hasattr(result.usage, 'total_tokens'):
+        
+        # Update total time
+        self.metrics.total_time = time.time() - self.start_time
+        
+        # Handle different response formats
+        if isinstance(result, dict):
+            # For Ollama responses
+            if 'response' in result:
+                # Rough estimate: 1 token per 4 characters
+                self.metrics.total_tokens += len(result['response']) // 4
+        elif isinstance(result, list):
+            # For DSPy responses that are lists
+            for r in result:
+                if isinstance(r, str):
+                    # Rough estimate: 1 token per 4 characters
+                    self.metrics.total_tokens += len(r) // 4
+                elif isinstance(r, dict) and 'response' in r:
+                    # For OpenAI-style responses in a list
+                    self.metrics.total_tokens += len(r['response']) // 4
+        elif hasattr(result, 'usage') and hasattr(result.usage, 'total_tokens'):
+            # For OpenAI responses
             self.metrics.total_tokens += result.usage.total_tokens
         elif hasattr(result, 'usage') and isinstance(result.usage, dict) and 'total_tokens' in result.usage:
             self.metrics.total_tokens += result.usage['total_tokens']
-        elif isinstance(result, list) and result and isinstance(result[0], dict) and 'usage' in result[0]:
-            for r in result:
-                if 'usage' in r and 'total_tokens' in r['usage']:
-                    self.metrics.total_tokens += r['usage']['total_tokens']
-        elif isinstance(result, dict) and 'usage' in result and 'total_tokens' in result['usage']:
-            self.metrics.total_tokens += result['usage']['total_tokens']
-        elif isinstance(result, list) and result and isinstance(result[0], str):
-            # For DSPy responses that are lists of strings, estimate tokens
-            for r in result:
-                # Rough estimate: 1 token per 4 characters
-                self.metrics.total_tokens += len(r) // 4
+            
         return result
 
 
@@ -522,54 +545,37 @@ class BatchOptimizedGuidelineManager:
             try:
                 # Configure COPRO optimizer with evaluation metric
                 copro = CustomCOPRO(
-                    prompt_model=self.lm,
+                    prompt_model=MetricsLogger(self.lm, self.metrics),  # Wrap with metrics logger
                     metric=self._calculate_response_quality,
                     breadth=5,  # Number of new prompts to generate at each iteration
                     depth=3,  # Number of optimization iterations
-                    init_temperature=1.4  # Temperature for generating new prompts
+                    threshold=0.5,  # Quality threshold for accepting optimized prompts
+                    top_k=2,  # Number of top candidates to keep at each step
+                    max_steps=30  # Maximum optimization steps
                 )
                 
-                # Compile the program with training examples
+                # Optimize program
                 optimized_program = copro.compile(
                     student=self.program,
                     trainset=train_examples,
                     eval_kwargs={}  # Metric is already passed to COPRO constructor
                 )
                 
-                # Generate responses for each guideline
                 if optimized_program:
+                    # Use optimized program to generate responses
                     for guideline in batch:
-                        try:
-                            # Generate response using optimized program
-                            pred = optimized_program(condition=guideline.content.condition)
-                            
-                            # Extract response from prediction
-                            response = pred.response if hasattr(pred, 'response') else pred['response']
-                            
-                            # Create new guideline with updated response
-                            optimized_guidelines.append(Guideline(
-                                id=guideline.id,
-                                creation_utc=guideline.creation_utc,
-                                content=GuidelineContent(
-                                    condition=guideline.content.condition,
-                                    action=response
-                                )
-                            ))
-                        except Exception as e:
-                            logger.warning(f"Failed to optimize guideline: {str(e)}")
-                            # Fall back to original program
-                            pred = self.program(condition=guideline.content.condition)
-                            response = pred.response if hasattr(pred, 'response') else pred['response']
-                            
-                            # Create new guideline with updated response
-                            optimized_guidelines.append(Guideline(
-                                id=guideline.id,
-                                creation_utc=guideline.creation_utc,
-                                content=GuidelineContent(
-                                    condition=guideline.content.condition,
-                                    action=response
-                                )
-                            ))
+                        pred = optimized_program(condition=guideline.content.condition)
+                        response = pred.response if hasattr(pred, 'response') else pred['response']
+                        
+                        # Create new guideline with updated response
+                        optimized_guidelines.append(Guideline(
+                            id=guideline.id,
+                            creation_utc=guideline.creation_utc,
+                            content=GuidelineContent(
+                                condition=guideline.content.condition,
+                                action=response
+                            )
+                        ))
                 else:
                     logger.warning("No valid candidates found during optimization, using original program")
                     for guideline in batch:
@@ -601,7 +607,7 @@ class BatchOptimizedGuidelineManager:
                             action=response
                         )
                     ))
-                
+                    
         return optimized_guidelines
 
     def _calculate_response_quality(
@@ -626,14 +632,43 @@ class BatchOptimizedGuidelineManager:
             expected_response = example.response
             predicted_response = pred.response if hasattr(pred, 'response') else pred['response']
             
-            # Simple string matching for now
-            # TODO: Use more sophisticated metrics like semantic similarity
-            if predicted_response and expected_response:
-                # Calculate basic string similarity
-                similarity = difflib.SequenceMatcher(None, predicted_response, expected_response).ratio()
-                return similarity
+            # Basic quality checks
+            if not predicted_response or not expected_response:
+                return 0.0
+                
+            # Calculate base score from string similarity
+            base_score = difflib.SequenceMatcher(None, predicted_response.lower(), expected_response.lower()).ratio()
             
-            return 0.0
+            # Additional quality metrics
+            quality_score = 0.0
+            
+            # Length check - responses should be reasonably sized
+            if 20 <= len(predicted_response) <= 200:
+                quality_score += 0.2
+                
+            # Check for professional language
+            professional_terms = ["please", "thank", "assist", "help", "understand"]
+            if any(term in predicted_response.lower() for term in professional_terms):
+                quality_score += 0.2
+                
+            # Check for error messages
+            error_terms = ["error:", "exception:", "debug:", "traceback"]
+            if not any(term in predicted_response.lower() for term in error_terms):
+                quality_score += 0.2
+                
+            # Check for specific details
+            if any(char.isdigit() for char in predicted_response) or "$" in predicted_response:
+                quality_score += 0.2
+                
+            # Check for relevant terminology
+            keywords = ["pricing", "tier", "technical", "error", "feature", "subscription", "account"]
+            if any(keyword in predicted_response.lower() for keyword in keywords):
+                quality_score += 0.2
+                
+            # Combine base similarity score with quality metrics
+            final_score = (base_score * 0.5) + (quality_score * 0.5)
+            
+            return min(1.0, final_score)  # Cap at 1.0
             
         except Exception as e:
             logger.error(f"Error calculating response quality: {str(e)}")

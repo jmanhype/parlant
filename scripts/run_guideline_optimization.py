@@ -1,6 +1,7 @@
 """Script to run guideline optimization with different models."""
 
 import os
+import sys
 import asyncio
 from datetime import datetime
 from typing import List, Dict
@@ -10,6 +11,21 @@ from dspy.teleprompt import COPRO
 
 from parlant.core.guidelines import Guideline, GuidelineContent
 from parlant.dspy_integration.guideline_optimizer import BatchOptimizedGuidelineManager, CustomerServiceProgram
+
+# Tee output to both console and file
+class Tee:
+    def __init__(self, *files):
+        self.files = files
+    def write(self, obj):
+        for f in self.files:
+            f.write(obj)
+            f.flush()
+    def flush(self):
+        for f in self.files:
+            f.flush()
+
+f = open('output.log', 'a')
+sys.stdout = Tee(sys.stdout, f)
 
 # Example guidelines
 GUIDELINES = [
