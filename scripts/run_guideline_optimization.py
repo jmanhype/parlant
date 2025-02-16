@@ -5,8 +5,11 @@ import asyncio
 from datetime import datetime
 from typing import List, Dict
 
+import dspy
+from dspy.teleprompt import COPRO
+
 from parlant.core.guidelines import Guideline, GuidelineContent
-from parlant.dspy_integration.guideline_optimizer import BatchOptimizedGuidelineManager
+from parlant.dspy_integration.guideline_optimizer import BatchOptimizedGuidelineManager, GuidelineProgram
 
 # Example guidelines
 GUIDELINES = [
@@ -55,12 +58,36 @@ GUIDELINES = [
 # Example training data
 TRAINING_DATA = [
     {
-        "input": "Customer asks about upgrading their subscription",
-        "output": "I can help you upgrade your subscription. Currently, you can upgrade to our Pro tier ($25/month) or Enterprise tier (custom pricing). Which would you like to learn more about?"
+        "condition": "Customer asks about upgrading their subscription",
+        "response": "I can help you upgrade your subscription. Currently, you can upgrade to our Pro tier ($25/month) or Enterprise tier (custom pricing). Which would you like to learn more about?"
     },
     {
-        "input": "Customer can't log in to their account",
-        "output": "I'm sorry you're having trouble logging in. To help you best: 1) Are you getting any specific error messages? 2) Have you tried resetting your password?"
+        "condition": "Customer can't log in to their account",
+        "response": "I'm sorry you're having trouble logging in. To help you best: 1) Are you getting any specific error messages? 2) Have you tried resetting your password?"
+    },
+    {
+        "condition": "Customer complains about app crashing",
+        "response": "I apologize for the inconvenience. To help resolve this quickly: 1) What device/OS are you using? 2) When did the crashes start? 3) Does it happen during specific actions?"
+    },
+    {
+        "condition": "Customer wants to cancel subscription",
+        "response": "I understand you'd like to cancel. Before proceeding, may I ask about your reasons? We might have solutions to address your concerns, or I can offer alternative plans that better suit your needs."
+    },
+    {
+        "condition": "Customer asks about data security",
+        "response": "We take data security very seriously. Our platform uses industry-standard encryption, regular security audits, and complies with GDPR/CCPA. Would you like more specific details about any aspect of our security measures?"
+    },
+    {
+        "condition": "Customer requests API documentation",
+        "response": "Our API documentation is available at docs.example.com. It includes quickstart guides, endpoint references, and code samples. Which programming language are you using? I can point you to relevant examples."
+    },
+    {
+        "condition": "Customer reports missing data",
+        "response": "I understand this is concerning. Let's investigate: 1) Which specific data is missing? 2) When did you last see it? 3) Have you made any recent changes? This will help us locate and restore your data quickly."
+    },
+    {
+        "condition": "Customer asks about integration options",
+        "response": "We offer several integration options including REST API, webhooks, and native connectors for popular platforms. Could you tell me which system you're looking to integrate with? I'll provide specific compatibility details."
     }
 ]
 
@@ -117,6 +144,22 @@ def run_optimization(model_name: str, batch_size: int = 5) -> None:
         model_name=model_name,
         use_optimizer=True
     )
+    
+    # Configure optimizer if needed
+    if optimizer.use_optimizer:
+        optimizer.optimizer = COPRO(
+            prompt_model=optimizer.lm,
+            init_temperature=1.0,      # Higher temperature for more diverse candidates
+            breadth=12,                # Generate more candidates
+            depth=4,                   # More iterations for refinement
+            threshold=0.5,             # More lenient threshold
+            top_k=3,                   # Keep top 3 candidates at each step
+            max_steps=50,              # Allow more optimization steps
+            metric=lambda pred, gold: GuidelineProgram()._calculate_response_quality(
+                pred.get("response", "") if isinstance(pred, dict) else getattr(pred, "response", ""),
+                gold.get("response", "") if isinstance(gold, dict) else getattr(gold, "response", "")
+            )
+        )
     
     # Run optimization
     optimized = optimizer.optimize_guidelines(
