@@ -1,15 +1,17 @@
-"""Script to run guideline optimization with different models."""
+"""Script to run guideline optimization with classification."""
 
 import os
 import sys
-import asyncio
 from datetime import datetime
-from typing import List, Dict
+from typing import Dict, List, Optional
 
 import dspy
 from dspy.teleprompt import COPRO
 
 from parlant.core.guidelines import Guideline, GuidelineContent
+from parlant.core.metrics import ModelMetrics
+from parlant.core.ollama import initialize_ollama_model
+from parlant.dspy_integration.guideline_classifier import GuidelineClassifier
 from parlant.dspy_integration.guideline_optimizer import BatchOptimizedGuidelineManager, CustomerServiceProgram
 
 # Tee output to both console and file
@@ -52,22 +54,6 @@ GUIDELINES = [
             condition="Customer requests a refund",
             action="I understand you'd like a refund. Could you please explain the reason for your request? This will help me process it appropriately."
         )
-    ),
-    Guideline(
-        id="4",
-        creation_utc=datetime.now(),
-        content=GuidelineContent(
-            condition="Customer asks about feature availability",
-            action="I'll be happy to explain our feature availability. Which specific feature are you interested in?"
-        )
-    ),
-    Guideline(
-        id="5",
-        creation_utc=datetime.now(),
-        content=GuidelineContent(
-            condition="Customer reports slow performance",
-            action="I'm sorry to hear about the performance issues. Could you tell me: 1) When did you first notice this? 2) Which specific operations are slow?"
-        )
     )
 ]
 
@@ -84,84 +70,88 @@ TRAINING_DATA = [
     {
         "condition": "Customer complains about app crashing",
         "response": "I apologize for the inconvenience. To help resolve this quickly: 1) What device/OS are you using? 2) When did the crashes start? 3) Does it happen during specific actions?"
-    },
-    {
-        "condition": "Customer wants to cancel subscription",
-        "response": "I understand you'd like to cancel. Before proceeding, may I ask about your reasons? We might have solutions to address your concerns, or I can offer alternative plans that better suit your needs."
-    },
-    {
-        "condition": "Customer asks about data security",
-        "response": "We take data security very seriously. Our platform uses industry-standard encryption, regular security audits, and complies with GDPR/CCPA. Would you like more specific details about any aspect of our security measures?"
-    },
-    {
-        "condition": "Customer requests API documentation",
-        "response": "Our API documentation is available at docs.example.com. It includes quickstart guides, endpoint references, and code samples. Which programming language are you using? I can point you to relevant examples."
-    },
-    {
-        "condition": "Customer reports missing data",
-        "response": "I understand this is concerning. Let's investigate: 1) Which specific data is missing? 2) When did you last see it? 3) Have you made any recent changes? This will help us locate and restore your data quickly."
-    },
-    {
-        "condition": "Customer asks about integration options",
-        "response": "We offer several integration options including REST API, webhooks, and native connectors for popular platforms. Could you tell me which system you're looking to integrate with? I'll provide specific compatibility details."
     }
 ]
 
-def calculate_response_quality(condition: str, response: str) -> float:
-    """Calculate quality score for a response.
-    
-    Args:
-        condition: Input condition
-        response: Generated response
-        
-    Returns:
-        Quality score between 0 and 1
-    """
-    score = 0.0
-    
-    # Length check (not too short, not too long)
-    if 20 <= len(response) <= 200:
-        score += 0.2
-        
-    # Contains relevant terminology
-    keywords = ["pricing", "tier", "technical", "error", "feature", "subscription", "account"]
-    if any(keyword in response.lower() for keyword in keywords):
-        score += 0.2
-        
-    # Includes specific details
-    if any(char.isdigit() for char in response) or "$" in response:
-        score += 0.2
-        
-    # Professional language
-    professional_terms = ["please", "thank", "assist", "help", "understand"]
-    if any(term in response.lower() for term in professional_terms):
-        score += 0.2
-        
-    # No error messages or debugging info
-    error_terms = ["error:", "exception:", "debug:", "traceback"]
-    if not any(term in response.lower() for term in error_terms):
-        score += 0.2
-        
-    return score
+# Test conversations for classification
+TEST_CONVERSATIONS = [
+    (
+        "User: I need help with my account\nAssistant: I'll help you",
+        ["Account support", "Technical issues", "Billing"],
+        {"activated": [True, False, False]}
+    ),
+    (
+        "User: How much does it cost?\nAssistant: Let me check",
+        ["Account support", "Technical issues", "Billing"],
+        {"activated": [False, False, True]}
+    ),
+    (
+        "User: The app is not working\nAssistant: I'll help troubleshoot",
+        ["Account support", "Technical issues", "Billing"],
+        {"activated": [False, True, False]}
+    )
+]
 
 def run_optimization(model_name: str, batch_size: int = 5) -> None:
     """Run optimization with specified model.
     
     Args:
         model_name: Name of model to use
-        batch_size: Size of batches for processing
+        batch_size: Batch size for optimization
     """
     print(f"\nRunning optimization with {model_name}")
     print("-" * 80)
     
-    # Initialize optimizer
-    optimizer = BatchOptimizedGuidelineManager(
+    # Initialize metrics
+    metrics = ModelMetrics()
+    
+    # Initialize classifier
+    print("\nTesting Guideline Classification:")
+    classifier = GuidelineClassifier(
         api_key=os.getenv("OPENAI_API_KEY", ""),
         model_name=model_name,
+        metrics=metrics,
         use_optimizer=True
     )
     
-    # Configure optimizer if needed
+    # Run classification tests
+    total_quality = 0.0
+    for conversation, guidelines, expected in TEST_CONVERSATIONS:
+        print(f"\nConversation: {conversation}")
+        print(f"Guidelines: {guidelines}")
+        print(f"Expected: {expected}")
+        
+        # Get predictions
+        result = classifier(
+            conversation=conversation,
+            guidelines=guidelines
+        )
+        
+        print(f"Predicted: {result}")
+        
+        # Calculate quality
+        quality = classifier._calculate_classification_quality(result, expected)
+        total_quality += quality
+        print(f"Quality: {quality:.2f}")
+    
+    # Print classification metrics
+    avg_quality = total_quality / len(TEST_CONVERSATIONS)
+    print(f"\nClassification Metrics:")
+    print(f"Average quality: {avg_quality:.2f}")
+    print(f"API calls: {metrics.total_api_calls}")
+    print(f"Tokens: {metrics.total_tokens}")
+    print(f"Time: {metrics.total_time:.2f} seconds")
+    
+    # Initialize response optimizer
+    print("\nOptimizing Response Generation:")
+    optimizer = BatchOptimizedGuidelineManager(
+        api_key=os.getenv("OPENAI_API_KEY", ""),
+        model_name=model_name,
+        metrics=metrics,
+        use_optimizer=True
+    )
+    
+    # Configure optimizer
     if optimizer.use_optimizer:
         optimizer.optimizer = COPRO(
             prompt_model=optimizer.lm,
@@ -177,38 +167,36 @@ def run_optimization(model_name: str, batch_size: int = 5) -> None:
             )
         )
     
-    # Run optimization
+    # Run response optimization
     optimized = optimizer.optimize_guidelines(
         guidelines=GUIDELINES,
         examples=TRAINING_DATA,
         batch_size=batch_size
     )
     
-    # Calculate average quality score
-    avg_quality = sum(
-        calculate_response_quality(g.content.condition, g.content.action)
-        for g in optimized
-    ) / len(optimized)
-    
-    # Print results
-    print(f"Average response quality: {avg_quality:.2f}")
-    print(f"Total API calls: {optimizer.metrics.total_api_calls}")
-    print(f"Total tokens: {optimizer.metrics.total_tokens}")
-    print(f"Total time: {optimizer.metrics.total_time:.2f} seconds")
-    print("\nExample responses:")
-    
+    # Print response optimization results
+    print("\nResponse Optimization Results:")
     for guideline in optimized:
         print(f"\nCondition: {guideline.content.condition}")
         print(f"Response: {guideline.content.action}")
     
+    # Print final metrics
+    print(f"\nFinal Metrics:")
+    print(f"Total API calls: {metrics.total_api_calls}")
+    print(f"Total tokens: {metrics.total_tokens}")
+    print(f"Total time: {metrics.total_time:.2f} seconds")
     print("-" * 80)
 
 def main() -> None:
-    """Run optimization with both models."""
-    # Run with GPT-3.5-turbo
+    """Run optimization with both OpenAI and Llama models."""
+    # Initialize Ollama model
+    print("\nInitializing Llama2 model...")
+    initialize_ollama_model("llama2")
+    
+    # Run with OpenAI
     run_optimization("openai/gpt-3.5-turbo")
     
-    # Run with Llama2
+    # Run with Llama
     run_optimization("ollama/llama2")
 
 if __name__ == "__main__":
