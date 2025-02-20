@@ -1,7 +1,7 @@
 
 <div align="center">
 <img alt="Parlant Logo" src="https://github.com/emcie-co/parlant/blob/e0fefba25efd1b956ead881964025baae5dc4119/banner.png" />
-  <h2>Parlant: The Behavior Guidance Framework for Customer-Facing Agents</h2>
+  <h2>Parlant: Control Your LLMs in Customer-Facing Use Cases</h2>
   <p>
     <a href="https://www.parlant.io/" target="_blank">Website</a> —
     <a href="https://www.parlant.io/docs/quickstart/introduction" target="_blank">Introduction</a> —
@@ -20,7 +20,7 @@
   </p>
 </div>
 
-**IMPORTANT NOTE:** Parlant is in active development by a team of (currently) 12 contributors (developers, researchers, and QA) from leading instutions, such as Microsoft, Check Point, and Dynamic Yield. We're looking for more contributors to help get customer-facing agents under control! Please consider joining our Discord server and participating in our development.
+**IMPORTANT NOTE:** Parlant is in active development by a team of (currently) 12 contributors (developers, researchers, and QA) from leading institutions, such as Microsoft, Check Point, and Dynamic Yield. We're looking for more contributors to help get customer-facing agents under control! Please consider joining our Discord server and participating in our development.
 
 ## ✨ Take Control of AI Agent Decisions
 **Parlant is a framework that transforms how AI agents make decisions in customer-facing scenarios.**
@@ -61,7 +61,7 @@ Parlant is the right tool for the job if you're building an LLM-based chat agent
 1. 📈 You're expected to maintain a **growing set of behavioral guidelines**, and you need to maintain them coherently and with version-tracking
 1. 💬 Conversational UX and user-engagmeent is an important concern for your use case, and you want to easily **control the flow and tone of conversations**
 
-## ⭐ Help Us Pick Up Pace!
+## ⭐ Star Us: Your Support Goes a Long Way!
 [![Star History Chart](https://api.star-history.com/svg?repos=emcie-co/parlant&type=Date)](https://star-history.com/#emcie-co/parlant&Date)
 
 ## 🤔 What Makes Parlant Different?
